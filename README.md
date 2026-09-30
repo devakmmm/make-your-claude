@@ -1,4 +1,4 @@
-# claude-discipline-hooks
+# make-your-claude
 
 Six small hooks for [Claude Code](https://claude.com/claude-code) that enforce working discipline
 the model cannot be trusted to keep on its own. Python 3.10+, standard library only, tested on
