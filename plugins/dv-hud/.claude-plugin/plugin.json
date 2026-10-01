@@ -1,0 +1,9 @@
+{
+  "name": "dv-hud",
+  "version": "0.1.0",
+  "description": "A heads-up display for Claude Code: a readout band above the prompt, telemetry-style tool rows, and a reactor pane that shows when Claude is working.",
+  "author": { "name": "Devak Mehta" },
+  "homepage": "https://github.com/devakmmm/make-your-claude",
+  "repository": "https://github.com/devakmmm/make-your-claude",
+  "license": "MIT"
+}

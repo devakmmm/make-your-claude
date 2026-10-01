@@ -1,0 +1,8 @@
+{
+  "name": "make-your-claude",
+  "owner": { "name": "Devak Mehta" },
+  "description": "Claude Code mods for working discipline and a heads-up display",
+  "plugins": [
+    { "name": "dv-hud", "source": "./plugins/dv-hud" }
+  ]
+}
