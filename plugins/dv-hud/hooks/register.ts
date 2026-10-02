@@ -1,3 +1,7 @@
+// D.V is the product's name, not a setting: the signature and link are fixed
+const SIGNATURE = 'D.V online. Built by Devak Mehta'
+const HOME = 'https://devakmmm.github.io/'
+
 const LIMIT_LABELS = { five_hour: '5H', seven_day: '7D', spend_limit: 'SPEND' }
 
 // The last figures session.measure reported, shared with the band's render hook
@@ -35,7 +39,7 @@ export function register(on) {
   })
 
   on('command.run', { command: 'hud' }, async () => {
-    return { text: 'D.V HUD online' }
+    return { text: SIGNATURE + '\n' + HOME }
   })
 
   on('session.measure', async ($, e, next) => {
