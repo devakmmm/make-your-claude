@@ -35,6 +35,7 @@ export function register(on) {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'hud', description: 'Show the D.V HUD status' })
     model = await $.session.model()
+    $.ui.log('◉ ' + SIGNATURE + '. ' + HOME)
     return next(e)
   })
 
