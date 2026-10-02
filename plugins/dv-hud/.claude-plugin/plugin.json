@@ -5,5 +5,19 @@
   "author": { "name": "Devak Mehta" },
   "homepage": "https://github.com/devakmmm/make-your-claude",
   "repository": "https://github.com/devakmmm/make-your-claude",
-  "license": "MIT"
+  "license": "MIT",
+  "userConfig": {
+    "briefingTemplate": {
+      "type": "string",
+      "title": "Briefing wording",
+      "description": "What D.V says when a turn ends. Use {files}, {commands}, {held} and {time}. Leave empty for the default.",
+      "default": ""
+    },
+    "voice": {
+      "type": "boolean",
+      "title": "Voice",
+      "description": "Speak briefings and held actions out loud with your system's own voice. Nothing is sent anywhere.",
+      "default": false
+    }
+  }
 }

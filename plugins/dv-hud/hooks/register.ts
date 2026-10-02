@@ -1,3 +1,4 @@
+import { briefing } from './briefing.ts'
 import { PUSH_CHECKLIST, pushTarget } from './push.ts'
 
 // D.V is the product's name, not a setting: the signature and link are fixed
@@ -15,6 +16,11 @@ let ticker = undefined
 const heldHeads = new Set()
 // a protocol held an action this turn: the core shows red until the next turn starts
 let heldThisTurn = false
+// what the main loop did this turn, for the briefing: files changed, commands run, actions held
+const FILE_TOOLS = { Edit: 'file_path', Write: 'file_path', NotebookEdit: 'notebook_path' }
+let turnFiles = new Set()
+let turnCommands = 0
+let turnHeld = 0
 
 function elapsedText(ms) {
   const seconds = Math.floor(ms / 1000)
@@ -37,7 +43,18 @@ function limitsText(rateLimits) {
     .join(' · ')
 }
 
-export function register(on) {
+export function register(on, options) {
+  // counts a tool call once it has run; subagents' calls and held calls are not the turn's own work
+  on('tool.call', async ($, e, next) => {
+    const result = await next(e)
+    if (e.agentId === undefined && result?.deny === undefined) {
+      const path = e[FILE_TOOLS[e.tool]]
+      if (path) turnFiles.add(path)
+      if (e.tool === 'Bash') turnCommands++
+    }
+    return result
+  })
+
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'hud', description: 'Show the D.V HUD status' })
     model = await $.session.model()
@@ -61,6 +78,7 @@ export function register(on) {
     if (git.exitCode !== 0 || key === '' || heldHeads.has(key)) return next(e)
     heldHeads.add(key)
     heldThisTurn = true
+    turnHeld++
     $.ui.invalidate('ui.render')
     return { deny: PUSH_CHECKLIST }
   })
@@ -73,6 +91,9 @@ export function register(on) {
 
   on('turn.start', async ($, e, next) => {
     heldThisTurn = false
+    turnFiles = new Set()
+    turnCommands = 0
+    turnHeld = 0
     turnStartedAt = await $.clock.now()
     ticker?.cancel()
     // Redraw once a second so the turn timer moves
@@ -83,6 +104,10 @@ export function register(on) {
   on('turn.complete', async ($, e, next) => {
     ticker?.cancel()
     ticker = undefined
+    if (e.agentId === undefined && !e.isAborted) {
+      const counts = { files: turnFiles.size, commands: turnCommands, held: turnHeld, ms: e.durationMs }
+      $.ui.toast('D.V: ' + briefing(options?.briefingTemplate || undefined, counts))
+    }
     return next(e)
   })
 
