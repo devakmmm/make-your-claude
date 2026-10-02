@@ -1,5 +1,6 @@
 import { briefing } from './briefing.ts'
 import { PUSH_CHECKLIST, pushTarget } from './push.ts'
+import { WINDOWS_SPEAK, spoken } from './voice.ts'
 
 // D.V is the product's name, not a setting: the signature and link are fixed
 const SIGNATURE = 'D.V online. Built by Devak Mehta'
@@ -43,6 +44,27 @@ function limitsText(rateLimits) {
     .join(' · ')
 }
 
+// Speaks with the engine's voice, or Windows speech where the engine has none; a failure is logged
+// to the debug log and never reaches the turn
+async function say($, text) {
+  const words = spoken(text)
+  try {
+    await $.audio.speak(words)
+    return
+  } catch (engineError) {
+    try {
+      const run = await $.process.run(['powershell', '-NoProfile', '-NonInteractive', '-Command', WINDOWS_SPEAK], {
+        stdin: words,
+        timeoutMs: 60000,
+      })
+      if (run.exitCode === 0) return
+      $.ui.log('D.V voice: no synthesizer spoke (' + String(engineError) + '; powershell exit ' + run.exitCode + ')', { to: 'debug' })
+    } catch (fallbackError) {
+      $.ui.log('D.V voice: no synthesizer spoke (' + String(engineError) + '; ' + String(fallbackError) + ')', { to: 'debug' })
+    }
+  }
+}
+
 export function register(on, options) {
   // counts a tool call once it has run; subagents' calls and held calls are not the turn's own work
   on('tool.call', async ($, e, next) => {
@@ -80,6 +102,7 @@ export function register(on, options) {
     heldThisTurn = true
     turnHeld++
     $.ui.invalidate('ui.render')
+    if (options?.voice) void say($, 'Push held. Walk the diff first.')
     return { deny: PUSH_CHECKLIST }
   })
 
@@ -106,7 +129,10 @@ export function register(on, options) {
     ticker = undefined
     if (e.agentId === undefined && !e.isAborted) {
       const counts = { files: turnFiles.size, commands: turnCommands, held: turnHeld, ms: e.durationMs }
-      $.ui.toast('D.V: ' + briefing(options?.briefingTemplate || undefined, counts))
+      const text = briefing(options?.briefingTemplate || undefined, counts)
+      $.ui.toast('D.V: ' + text)
+      // spoken beside the turn, never holding it up
+      if (options?.voice) void say($, text)
     }
     return next(e)
   })
