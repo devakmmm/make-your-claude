@@ -6,6 +6,17 @@ import { WINDOWS_SPEAK, spoken } from './voice.ts'
 const SIGNATURE = 'D.V online. Built by Devak Mehta'
 const HOME = 'https://devakmmm.github.io/'
 
+const DV_PROMPT =
+  'Answer in a few plain sentences, using only what this session shows. ' +
+  'If the session does not show it, say so instead of guessing. Question: '
+const DV_USAGE = 'Ask D.V about this session, like `/dv what did we change?`. It answers from the session itself, on your own usage.'
+const DV_UNANSWERED = {
+  'nothing-to-fork': 'Nothing to ask about yet. Ask once Claude has replied at least once.',
+  'empty-reply': 'D.V had no answer to that.',
+  aborted: 'Stopped.',
+  'api-error': 'D.V could not reach the model just now. Try again.',
+}
+
 const LIMIT_LABELS = { five_hour: '5H', seven_day: '7D', spend_limit: 'SPEND' }
 
 // The last figures session.measure reported, shared with the band's render hook
@@ -79,9 +90,19 @@ export function register(on, options) {
 
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'hud', description: 'Show the D.V HUD status' })
+    await $.command.register({ name: 'dv', description: 'Ask D.V about this session', argumentHint: '<question>' })
     model = await $.session.model()
     $.ui.log('◉ ' + SIGNATURE + '. ' + HOME)
     return next(e)
+  })
+
+  // /dv <question>: one tool-less answer over this session's own transcript, kept out of the chat
+  on('command.run', { command: 'dv' }, async ($, e) => {
+    const question = (e.args ?? '').trim()
+    if (question === '') return { text: DV_USAGE }
+    const reply = await $.model.fork({ prompt: DV_PROMPT + question })
+    if (reply.isAnswered) return { text: reply.text }
+    return { text: DV_UNANSWERED[reply.reason] ?? 'D.V could not answer (' + reply.reason + ').' }
   })
 
   on('command.run', { command: 'hud' }, async () => {
