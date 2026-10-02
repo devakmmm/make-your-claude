@@ -16,6 +16,32 @@ test('the first push of a HEAD is held with the diff checklist, and the retry go
   expect(retry.deny).toBeUndefined()
 })
 
+const BAND = {
+  plugin: 'dv-hud',
+  component: 'AbovePrompt',
+  requestId: 'band',
+  surface: 'terminal',
+  viewport: { columns: 100, rows: 30 },
+  props: { hasSurvey: false, isWorking: true, maxRows: 6, bodyColumns: 100, scroll: { offset: 0, bodyRows: 5 }, view: {} },
+} as const
+
+test('a held push turns the core red until the next turn starts', async ($, on) => {
+  on('session.cwd', () => ({ value: '/work/site' }))
+  on('process.run', () => RAN('/work/site\nc0ffee\n'))
+  on('tool.call', () => ({ result: { text: 'pushed' } }))
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+
+  await $.turn.start({ text: 'ship it', turnId: 't1' })
+  await $.tool.call({ tool: 'Bash', command: 'git push' })
+  const held = await $.ui.mount(BAND)
+  expect((await held.find({ type: 'Text', text: '◉ D.V' }))?.props.color).toBe('red')
+  await held.unmount()
+
+  await $.turn.start({ text: 'ok, walked it', turnId: 't2' })
+  const next = await $.ui.mount(BAND)
+  expect((await next.find({ type: 'Text', text: '◉ D.V' }))?.props.color).toBe('cyan')
+})
+
 test('outside a repo a push goes through rather than being held on every retry', async ($, on) => {
   on('session.cwd', () => ({ value: '/tmp' }))
   on('process.run', () => RAN('', 128))

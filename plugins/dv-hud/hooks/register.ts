@@ -13,6 +13,8 @@ let turnStartedAt = undefined
 let ticker = undefined
 // "<repo root>\n<HEAD>" of every push already held once this session
 const heldHeads = new Set()
+// a protocol held an action this turn: the core shows red until the next turn starts
+let heldThisTurn = false
 
 function elapsedText(ms) {
   const seconds = Math.floor(ms / 1000)
@@ -58,6 +60,8 @@ export function register(on) {
     const key = git.stdout.trim()
     if (git.exitCode !== 0 || key === '' || heldHeads.has(key)) return next(e)
     heldHeads.add(key)
+    heldThisTurn = true
+    $.ui.invalidate('ui.render')
     return { deny: PUSH_CHECKLIST }
   })
 
@@ -68,6 +72,7 @@ export function register(on) {
   })
 
   on('turn.start', async ($, e, next) => {
+    heldThisTurn = false
     turnStartedAt = await $.clock.now()
     ticker?.cancel()
     // Redraw once a second so the turn timer moves
@@ -91,7 +96,7 @@ export function register(on) {
     return Box({
       gap: 2,
       children: [
-        Text({ color: 'cyan', bold: true, children: '◉ D.V' }),
+        Text({ color: heldThisTurn ? 'red' : 'cyan', bold: true, children: '◉ D.V' }),
         Box({ key: 'ctx', children: Text({ color: 'cyan', children: contextText(usage.context) }) }),
         Box({ key: 'limits', children: Text({ color: 'cyan', children: limitsText(usage.rateLimits) }) }),
         Box({ key: 'model', children: Text({ color: 'cyan', children: modelText(model) }) }),
