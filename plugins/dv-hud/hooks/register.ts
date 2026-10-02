@@ -1,5 +1,6 @@
 import { briefing } from './briefing.ts'
 import { PUSH_CHECKLIST, pushTarget } from './push.ts'
+import { rowName, rowTarget } from './rows.ts'
 import { WINDOWS_SPEAK, spoken } from './voice.ts'
 
 // D.V is the product's name, not a setting: the signature and link are fixed
@@ -156,6 +157,22 @@ export function register(on, options) {
       if (options?.voice) void say($, text)
     }
     return next(e)
+  })
+
+  // Tool-call rows as telemetry lines in the terminal; an error or interruption keeps the engine's
+  // own row, which carries the detail. Other surfaces draw their own tool UI.
+  on('ui.render', { component: 'ToolUse' }, async ($, e, next) => {
+    if (e.surface !== 'terminal' || e.props.isErrored || e.props.isInterrupted) return next(e)
+    const { Box, Text } = $.ui.resolve(e)
+    return Box({
+      gap: 1,
+      children: [
+        Text({ color: 'cyan', children: '▸' }),
+        Text({ color: 'cyan', bold: true, children: rowName(e.props.tool) }),
+        Text({ children: rowTarget(e.props.tool, e.props.input) }),
+        Text({ dimColor: true, children: e.props.isRunning ? '…' : 'ok' }),
+      ],
+    })
   })
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
