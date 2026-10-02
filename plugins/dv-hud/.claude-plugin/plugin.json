@@ -1,7 +1,7 @@
 {
   "name": "dv-hud",
   "version": "0.1.0",
-  "description": "A heads-up display for Claude Code: a readout band above the prompt, telemetry-style tool rows, and a reactor pane that shows when Claude is working.",
+  "description": "D.V, a heads-up display for Claude Code by Devak Mehta: a readout band, telemetry tool rows, a core that pulses while Claude works, turn briefings, a push protocol, /dv and an optional voice.",
   "author": { "name": "Devak Mehta" },
   "homepage": "https://github.com/devakmmm/make-your-claude",
   "repository": "https://github.com/devakmmm/make-your-claude",

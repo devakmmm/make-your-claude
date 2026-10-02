@@ -1,8 +1,71 @@
 # make-your-claude
 
-Six small hooks for [Claude Code](https://claude.com/claude-code) that enforce working discipline
-the model cannot be trusted to keep on its own. Python 3.10+, standard library only, tested on
-Windows and Linux. Used daily on a real codebase before being published.
+**D.V**, a heads-up display mod for [Claude Code](https://claude.com/claude-code), and six Python
+hooks that make it check its own work. Built by Devak Mehta ([devakmmm.github.io](https://devakmmm.github.io/)).
+
+## D.V
+
+D.V turns a Claude Code session into a heads-up display that also does a few jobs.
+
+- **The band** above the prompt: context used, rate limits, the model, and a turn timer while
+  Claude works.
+- **Tool calls as telemetry lines** in the terminal (`▸ EDIT  src/app.ts  ok`). A failed call
+  keeps the engine's full row, with its error.
+- **The core**, a pane opened with `/hud`: a ring that pulses while Claude works and turns red when
+  a protocol holds an action. Terminal cells in the terminal, an SVG in Claude Code Desktop and the
+  mobile app.
+- **Briefings.** When a turn ends, D.V says what the turn did: "Done in 1m 24s. 3 files changed,
+  2 commands run, 1 action held." It counts only what it watched happen, so it can't report work
+  that didn't happen. You can write your own wording.
+- **The push protocol.** The first `git push` or `gh pr create` of each HEAD is held with a
+  diff-review checklist, and the retry goes through. It reads the command's words, so
+  `git -C <dir> push` and `cd <dir> && git push` are caught, and a push quoted inside an `echo` is
+  not. Outside a git repo nothing is held.
+- **`/dv <question>`** asks D.V about the session, like `/dv what did we change?`. It answers from
+  the session's own transcript, outside the chat, on your own usage.
+- **Voice**, off by default: briefings and held pushes said out loud with your system's own voice
+  (`say` on macOS, the built-in System.Speech voices on Windows).
+
+### Install
+
+Needs Claude Code 2.1.287 or later. Mods are early access and may change between releases.
+
+```
+claude plugin marketplace add devakmmm/make-your-claude
+claude plugin install dv-hud@make-your-claude
+```
+
+Then use `claude` in a terminal, or Claude Code Desktop. Type `/hud` to open the core.
+
+If you also run the Python `pr_diff_reminder.py` hook below, a push is held twice. Keep one.
+
+### Settings
+
+`claude plugin configure dv-hud` shows them.
+
+| Setting | What it does | Default |
+|---|---|---|
+| `briefingTemplate` | Your wording for the end-of-turn briefing. Placeholders: `{files}`, `{commands}`, `{held}`, `{time}` | D.V's own wording |
+| `voice` | Say briefings and held pushes out loud | off |
+
+### What it sends
+
+Nothing of its own. D.V runs inside Claude Code and makes no network calls;
+`claude plugin validate --strict` lists every call it makes. `/dv` is an ordinary model request on
+your account. The voice is your operating system's.
+
+### Tests
+
+```
+cd plugins/dv-hud
+claude plugin test .
+```
+
+## The hooks (Python)
+
+Six small hooks for Claude Code that enforce working discipline the model cannot be trusted to keep
+on its own. Python 3.10+, standard library only, tested on Windows and Linux. Used daily on a real
+codebase before being published.
 
 | Hook | Event | What it does |
 |---|---|---|
@@ -13,7 +76,7 @@ Windows and Linux. Used daily on a real codebase before being published.
 | `psql_readonly_guard.py` | PreToolUse (Bash) | Denies any raw `psql` (including inside `wsl`, `sudo`, `bash -c`, pipes, absolute paths); only your read-only wrapper script is allowed through. |
 | `orchestration_vagueness_gate.py` | UserPromptSubmit | When a prompt asks for heavy multi-agent orchestration but names no file, ticket, symbol, steps or error, injects a "plan first" reminder. `force:` or `!` bypasses. |
 
-## Why these six
+### Why these six
 
 Each one exists because of a real failure that a prompt did not prevent:
 
@@ -28,7 +91,7 @@ Each one exists because of a real failure that a prompt did not prevent:
 - A database login that is read-only by convention is one forgotten flag from a write. The wrapper
   script is the only path; everything else is denied.
 
-## Install
+### Install
 
 Copy `hooks/` somewhere stable and register the hooks in `~/.claude/settings.json` (or a
 project's `.claude/settings.json`). Adjust the paths.
@@ -56,7 +119,7 @@ project's `.claude/settings.json`). Adjust the paths.
 
 The hooks import `hook_output.py` from their own directory, so keep the folder together.
 
-## Configuration (environment variables, all optional)
+### Configuration (environment variables, all optional)
 
 | Variable | Used by | Default |
 |---|---|---|
@@ -65,13 +128,13 @@ The hooks import `hook_output.py` from their own directory, so keep the folder t
 | `PR_MISTAKES_LOG` | pr_diff_reminder | unset (the checklist then says "if this project keeps a log…") |
 | `PSQL_READONLY_WRAPPER` | psql_readonly_guard | `rosql.sh` |
 
-## Tests
+### Tests
 
 ```
 python -m pytest tests -q
 ```
 
-## Design notes
+### Design notes
 
 - **Deterministic detection, latent judgment.** Hooks detect a condition and hand the decision to
   the model with a reason. They never try to reason about the content themselves.
