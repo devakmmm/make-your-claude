@@ -60,6 +60,18 @@ test('on the desktop the core is an SVG that says its state', async ($, on) => {
   expect(svg?.props.source).toContain('#FF3B30')
 })
 
+test('a subagent finishing does not end the main turn', async ($, on) => {
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', () => ({ text: 'done' }))
+  on('ui.toast', () => ({ value: undefined }))
+
+  await $.turn.start({ text: 'fan out', turnId: 't1' })
+  await $.turn.complete({ answer: 'sub done', durationMs: 5000, isAborted: false, turnId: 's1', agentId: 'sub1', reason: 'answer' })
+
+  const ui = await $.ui.mount(PANE())
+  expect([...inks((await ui.find({ type: 'Raster' }))?.props.cells)]).toEqual([CYAN])
+})
+
 test('/hud opens the D.V core pane', async ($, on) => {
   const opened: unknown[] = []
   on('ui.open', (_, e) => {

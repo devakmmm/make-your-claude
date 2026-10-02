@@ -158,10 +158,12 @@ export function register(on, options) {
   })
 
   on('turn.complete', async ($, e, next) => {
+    // a subagent's turn ending is not the main turn ending
+    if (e.agentId !== undefined) return next(e)
     ticker?.cancel()
     ticker = undefined
     working = false
-    if (e.agentId === undefined && !e.isAborted) {
+    if (!e.isAborted) {
       const counts = { files: turnFiles.size, commands: turnCommands, held: turnHeld, ms: e.durationMs }
       const text = briefing(options?.briefingTemplate || undefined, counts)
       $.ui.toast('D.V: ' + text)
