@@ -28,6 +28,19 @@ test('a failed call keeps the engine row, which carries the error', async ($, on
   expect(await texts(ui)).toEqual(['engine row'])
 })
 
+test('the spinner speaks as D.V and keeps the engine word', async ($, on) => {
+  on('ui.render', (_, e) => ({ type: 'Text', props: {}, children: [e.props.word] }))
+  const ui = await $.ui.mount({
+    plugin: 'dv-hud',
+    component: 'Spinner',
+    requestId: 'spin',
+    surface: 'terminal',
+    viewport: { columns: 100, rows: 30 },
+    props: { word: 'Pondering', message: null, suffix: '', mode: 'requesting' },
+  })
+  expect(await texts(ui)).toEqual(['D.V pondering'])
+})
+
 test('the desktop keeps its own tool rows', async ($, on) => {
   on('ui.render', () => ({ type: 'Text', props: {}, children: ['desktop row'] }))
   const ui = await $.ui.mount(ROW({ tool: 'Edit', input: { file_path: 'a.ts' } }, 'desktop'))
