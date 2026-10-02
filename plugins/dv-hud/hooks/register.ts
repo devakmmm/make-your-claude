@@ -1,4 +1,5 @@
 import { briefing } from './briefing.ts'
+import { CORE_COLUMNS, CORE_ROWS, coreCells, coreSvg } from './core.ts'
 import { PUSH_CHECKLIST, pushTarget } from './push.ts'
 import { rowName, rowTarget } from './rows.ts'
 import { WINDOWS_SPEAK, spoken } from './voice.ts'
@@ -7,6 +8,7 @@ import { WINDOWS_SPEAK, spoken } from './voice.ts'
 const SIGNATURE = 'D.V online. Built by Devak Mehta'
 const HOME = 'https://devakmmm.github.io/'
 const CORE_PANE = 'dv-core'
+const CORE_ALT = { idle: 'D.V core: idle', working: 'D.V core: working', held: 'D.V core: a push is held' }
 
 const DV_PROMPT =
   'Answer in a few plain sentences, using only what this session shows. ' +
@@ -26,6 +28,9 @@ let usage = { context: undefined, rateLimits: [] }
 let model = ''
 let turnStartedAt = undefined
 let ticker = undefined
+// Claude is working a turn; the frame counter moves the core's pulse
+let working = false
+let frame = 0
 // "<repo root>\n<HEAD>" of every push already held once this session
 const heldHeads = new Set()
 // a protocol held an action this turn: the core shows red until the next turn starts
@@ -138,19 +143,24 @@ export function register(on, options) {
 
   on('turn.start', async ($, e, next) => {
     heldThisTurn = false
+    working = true
     turnFiles = new Set()
     turnCommands = 0
     turnHeld = 0
     turnStartedAt = await $.clock.now()
     ticker?.cancel()
-    // Redraw once a second so the turn timer moves
-    ticker = $.clock.every(1000, () => $.ui.invalidate('ui.render'))
+    // Redraw four times a second so the turn timer and the core's pulse move
+    ticker = $.clock.every(250, () => {
+      frame++
+      $.ui.invalidate('ui.render')
+    })
     return next(e)
   })
 
   on('turn.complete', async ($, e, next) => {
     ticker?.cancel()
     ticker = undefined
+    working = false
     if (e.agentId === undefined && !e.isAborted) {
       const counts = { files: turnFiles.size, commands: turnCommands, held: turnHeld, ms: e.durationMs }
       const text = briefing(options?.briefingTemplate || undefined, counts)
@@ -159,6 +169,17 @@ export function register(on, options) {
       if (options?.voice) void say($, text)
     }
     return next(e)
+  })
+
+  on('ui.render', { component: 'Pane', requestId: CORE_PANE }, async ($, e) => {
+    const state = heldThisTurn ? 'held' : working ? 'working' : 'idle'
+    if (e.surface === 'terminal') {
+      const { Raster } = $.ui.resolve(e)
+      return Raster({ key: 'core', columns: CORE_COLUMNS, rows: CORE_ROWS, cells: coreCells(state, frame) })
+    }
+    // the desktop, mobile and VS Code draw SVG; its pulse animates itself
+    const { Svg } = $.ui.resolve(e)
+    return Svg({ source: coreSvg(state), alt: CORE_ALT[state], width: 160, height: 160, isInteractive: true })
   })
 
   // Tool-call rows as telemetry lines in the terminal; an error or interruption keeps the engine's
