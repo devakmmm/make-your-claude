@@ -1,3 +1,5 @@
+import { PUSH_CHECKLIST, pushTarget } from './push.ts'
+
 // D.V is the product's name, not a setting: the signature and link are fixed
 const SIGNATURE = 'D.V online. Built by Devak Mehta'
 const HOME = 'https://devakmmm.github.io/'
@@ -9,6 +11,8 @@ let usage = { context: undefined, rateLimits: [] }
 let model = ''
 let turnStartedAt = undefined
 let ticker = undefined
+// "<repo root>\n<HEAD>" of every push already held once this session
+const heldHeads = new Set()
 
 function elapsedText(ms) {
   const seconds = Math.floor(ms / 1000)
@@ -41,6 +45,20 @@ export function register(on) {
 
   on('command.run', { command: 'hud' }, async () => {
     return { text: SIGNATURE + '\n' + HOME }
+  })
+
+  // The push protocol: hold the first push (or PR) of each HEAD once, with the diff checklist as the
+  // reason; the retry goes through. Not a repo, or git fails: let it through rather than wedge.
+  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
+    const target = pushTarget(e.command ?? '')
+    if (target === undefined) return next(e)
+    const git = await $.process.run(['git', 'rev-parse', '--show-toplevel', 'HEAD'], {
+      cwd: target.dir ?? (await $.session.cwd()),
+    })
+    const key = git.stdout.trim()
+    if (git.exitCode !== 0 || key === '' || heldHeads.has(key)) return next(e)
+    heldHeads.add(key)
+    return { deny: PUSH_CHECKLIST }
   })
 
   on('session.measure', async ($, e, next) => {

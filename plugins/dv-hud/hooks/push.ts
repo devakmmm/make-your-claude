@@ -3,6 +3,13 @@
 
 export type PushTarget = { verb: 'git push' | 'gh pr create'; dir: string | undefined }
 
+// What the model reads when its first push of a HEAD is held
+export const PUSH_CHECKLIST =
+  'D.V protocol: the first push of this HEAD is held. Walk the diff before it leaves the machine: ' +
+  'run `git diff <base>...HEAD` and check that every hunk is intended, no comment was removed by accident, ' +
+  'no unrelated file or formatting churn slipped in, and there are no secrets, debug prints or WIP markers. ' +
+  'Then run the same command again; the retry goes through.'
+
 // Splits a command into segments (at && || ; | and newlines) of words, keeping quoted text whole
 function segments(command: string): string[][] {
   const out: string[][] = [[]]
