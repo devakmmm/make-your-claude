@@ -6,6 +6,7 @@ import { WINDOWS_SPEAK, spoken } from './voice.ts'
 // D.V is the product's name, not a setting: the signature and link are fixed
 const SIGNATURE = 'D.V online. Built by Devak Mehta'
 const HOME = 'https://devakmmm.github.io/'
+const CORE_PANE = 'dv-core'
 
 const DV_PROMPT =
   'Answer in a few plain sentences, using only what this session shows. ' +
@@ -106,7 +107,8 @@ export function register(on, options) {
     return { text: DV_UNANSWERED[reply.reason] ?? 'D.V could not answer (' + reply.reason + ').' }
   })
 
-  on('command.run', { command: 'hud' }, async () => {
+  on('command.run', { command: 'hud' }, async ($) => {
+    await $.ui.open({ id: CORE_PANE, title: 'D.V', columns: 28, rows: 12 })
     return { text: SIGNATURE + '\n' + HOME }
   })
 
